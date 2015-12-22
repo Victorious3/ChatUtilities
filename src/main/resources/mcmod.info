@@ -1,0 +1,11 @@
+[
+{
+  "modid": "chatutils",
+  "name": "Chat utilities",
+  "description": "",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "authorList": ["Vic Nightfall"]
+}
+]
