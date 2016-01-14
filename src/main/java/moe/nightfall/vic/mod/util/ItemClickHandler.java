@@ -1,5 +1,6 @@
 package moe.nightfall.vic.mod.util;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
@@ -7,10 +8,13 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.event.HoverEvent;
 import net.minecraft.event.HoverEvent.Action;
 import net.minecraft.inventory.Slot;
@@ -25,15 +29,14 @@ import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import org.lwjgl.input.Mouse;
-import org.lwjgl.opengl.GL11;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.relauncher.ReflectionHelper;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
 public class ItemClickHandler 
@@ -59,16 +62,15 @@ public class ItemClickHandler
 		if(event.gui instanceof GuiChat)
 		{
 			Minecraft mc = Minecraft.getMinecraft();
-			GuiChat gui = (GuiChat) event.gui;
-			IChatComponent component = mc.ingameGUI.getChatGUI().func_146236_a(Mouse.getX(), Mouse.getY());
+			IChatComponent component = mc.ingameGUI.getChatGUI().getChatComponent(Mouse.getX(), Mouse.getY());
 			if(component == null) return;
 			HoverEvent hoverEvent = component.getChatStyle().getChatHoverEvent();
 			if(hoverEvent != null && hoverEvent.getAction() == Action.SHOW_ITEM)
 			{
-				FontRenderer fr = mc.fontRenderer;
+				FontRenderer fr = mc.fontRendererObj;
 				int oWidth = 0, oHeight = 0, oy = 0;
 				
-				NBTBase nbtbase = JsonToNBT.func_150315_a(hoverEvent.getValue().getUnformattedText());
+				NBTBase nbtbase = JsonToNBT.getTagFromJson(hoverEvent.getValue().getUnformattedText());
 				ItemStack stack = null;
 				if(nbtbase instanceof NBTTagCompound)
 					stack = ItemStack.loadItemStackFromNBT((NBTTagCompound) nbtbase);
@@ -103,13 +105,13 @@ public class ItemClickHandler
 				drawGradientRect(x - 3, y - 3, x + width + 3, y - 3 + 1, color2, color2, 300);
 				drawGradientRect(x - 3, y + height + 2, x + width + 3, y + height + 3, color3, color3, 300);
 				
-				RenderItem renderItem = RenderItem.getInstance();
+				RenderItem renderItem = mc.getRenderItem();
 				float zLevel = renderItem.zLevel;
 				renderItem.zLevel = 300;
 				RenderHelper.enableGUIStandardItemLighting();
 				try {
-					renderItem.renderItemAndEffectIntoGUI(fr, mc.getTextureManager(), stack, x, y);
-					renderItem.renderItemOverlayIntoGUI(fr, mc.getTextureManager(), stack, x, y);
+					renderItem.renderItemAndEffectIntoGUI(stack, x, y);
+					renderItem.renderItemOverlayIntoGUI(fr, stack, x, y, null);
 				} catch (Exception e) {
 					// Failed to render item, probably due to leaving out the NBT compound
 					// There isn't much we can do about this... Apart from adding our own packet, of course
@@ -122,36 +124,32 @@ public class ItemClickHandler
 	
 	public static void drawGradientRect(int x1, int y1, int x2, int y2, int c1, int c2, int zLevel) 
 	{
-		float f = (float) (c1 >> 24 & 255) / 255.0F;
-		float f1 = (float) (c1 >> 16 & 255) / 255.0F;
-		float f2 = (float) (c1 >> 8 & 255) / 255.0F;
-		float f3 = (float) (c1 & 255) / 255.0F;
-		
-		float f4 = (float) (c2 >> 24 & 255) / 255.0F;
-		float f5 = (float) (c2 >> 16 & 255) / 255.0F;
-		float f6 = (float) (c2 >> 8 & 255) / 255.0F;
-		float f7 = (float) (c2 & 255) / 255.0F;
-		
-		GL11.glDisable(GL11.GL_TEXTURE_2D);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-		GL11.glShadeModel(GL11.GL_SMOOTH);
-		Tessellator tes = Tessellator.instance;
-		
-		tes.startDrawingQuads();
-		tes.setColorRGBA_F(f1, f2, f3, f);
-		tes.addVertex(x2, y1, zLevel);
-		tes.addVertex(x1, y1, zLevel);
-		tes.setColorRGBA_F(f5, f6, f7, f4);
-		tes.addVertex(x1, y2, zLevel);
-		tes.addVertex(x2, y2, zLevel);
-		tes.draw();
-		
-		GL11.glShadeModel(GL11.GL_FLAT);
-		GL11.glDisable(GL11.GL_BLEND);
-		GL11.glEnable(GL11.GL_ALPHA_TEST);
-		GL11.glEnable(GL11.GL_TEXTURE_2D);
+		float f = (float)(c1 >> 24 & 255) / 255.0F;
+        float f1 = (float)(c1 >> 16 & 255) / 255.0F;
+        float f2 = (float)(c1 >> 8 & 255) / 255.0F;
+        float f3 = (float)(c1 & 255) / 255.0F;
+        float f4 = (float)(c2 >> 24 & 255) / 255.0F;
+        float f5 = (float)(c2 >> 16 & 255) / 255.0F;
+        float f6 = (float)(c2 >> 8 & 255) / 255.0F;
+        float f7 = (float)(c2 & 255) / 255.0F;
+        
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        GlStateManager.disableAlpha();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.shadeModel(7425);
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+        worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
+        worldrenderer.pos(x2, y1, zLevel).color(f1, f2, f3, f).endVertex();
+        worldrenderer.pos(x1, y1, zLevel).color(f1, f2, f3, f).endVertex();
+        worldrenderer.pos(x1, y2, zLevel).color(f5, f6, f7, f4).endVertex();
+        worldrenderer.pos(x2, y2, zLevel).color(f5, f6, f7, f4).endVertex();
+        tessellator.draw();
+        GlStateManager.shadeModel(7424);
+        GlStateManager.disableBlend();
+        GlStateManager.enableAlpha();
+        GlStateManager.enableTexture2D();
 	}
 	
 	// ASM injected
@@ -176,7 +174,7 @@ public class ItemClickHandler
 			if(clickedSlot == null || !clickedSlot.getHasStack()) return;
 			
 			ItemStack stack = clickedSlot.getStack();
-			String text = "[S%" + stack.getItem().delegate.name() + ", " + stack.stackSize + ", " + stack.getItemDamage() + "]";
+			String text = "[S%" + stack.getItem().delegate.getResourceName() + ", " + stack.stackSize + ", " + stack.getItemDamage() + "]";
 			
 			if(button == 1)
 				Minecraft.getMinecraft().displayGuiScreen(new GuiChat(text));
@@ -187,17 +185,29 @@ public class ItemClickHandler
 	@SubscribeEvent
 	public void onChatMessage(ClientChatReceivedEvent event) {
 		if (!(event.message instanceof ChatComponentTranslation)) return;
+		
 		ChatComponentTranslation in = (ChatComponentTranslation) event.message;
 		if(!in.getKey().equals("chat.type.text")) return;
 		
 		IChatComponent res = new ChatComponentText("");		
-		IChatComponent comp = (IChatComponent) in.getFormatArgs()[1];
-		for (IChatComponent component : (List<IChatComponent>) comp.getSiblings()) {
+		ChatComponentText comp = (ChatComponentText) in.getFormatArgs()[1];
+		
+		System.out.println(comp);
+		List<IChatComponent> list = new ArrayList<IChatComponent>(comp.getSiblings());
+		if (comp.getChatComponentText_TextValue().length() > 0) {
+			// This was changed from 1.7.10, I suppose to make it more "efficient".
+			// More efficient = more work, as always. 1.8 (tm)
+			ChatComponentText text = new ChatComponentText(comp.getChatComponentText_TextValue());
+			text.setChatStyle(comp.getChatStyle());
+			list.add(0, text);
+		}
+		for (IChatComponent component : list) {
 			// Pick unformatted regions
 			if (component instanceof ChatComponentText) {
 				ChatComponentText tcomp = (ChatComponentText) component;
 				String raw = tcomp.getUnformattedText();
 				int index = raw.indexOf("[S%", 0);
+				
 				if (index == -1) {
 					res.appendSibling(component);
 					continue;

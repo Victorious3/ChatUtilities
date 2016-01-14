@@ -2,7 +2,7 @@ package moe.nightfall.vic.mod.util.transformer;
 
 import java.util.Map;
 
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 
 public class LoadingPlugin implements IFMLLoadingPlugin
 {

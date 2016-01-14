@@ -58,7 +58,7 @@ public class GuiScreenTransformer implements ITransformHandler {
 							ClassWriter writer = new ClassWriter(0);
 							classNode.accept(writer);
 							
-							System.out.println("[ChatUtils ASM]: GuiScreen patched!");
+							System.out.println("[Vanilla Tweaks ASM]: GuiScreen patched!");
 							return writer.toByteArray();
 						}
 					}

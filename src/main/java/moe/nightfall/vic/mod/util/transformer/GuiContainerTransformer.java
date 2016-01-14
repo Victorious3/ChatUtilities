@@ -43,7 +43,7 @@ public class GuiContainerTransformer implements ITransformHandler {
 				ClassWriter writer = new ClassWriter(0);
 				classNode.accept(writer);
 				
-				System.out.println("[ChatUtils ASM]: " + contextName.substring(contextName.lastIndexOf(".") + 1, contextName.length()) + " patched!");
+				System.out.println("[Vanilla Tweaks ASM]: " + contextName.substring(contextName.lastIndexOf(".") + 1, contextName.length()) + " patched!");
 				return writer.toByteArray();
 			}
 		}
